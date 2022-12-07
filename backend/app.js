@@ -28,13 +28,27 @@ app.use("/api/v1", employee);
 app.use("/api/v1", company);
 
 
-app.use(function (req, res, next) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+var enableCORS = function (req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, token, Content-Length, X-Requested-With, *');
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if ('OPTIONS' === req.method) {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+};
+app.all("/*", function (req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, token, Content-Length, X-Requested-With, *');
   res.setHeader("Access-Control-Allow-Credentials", "true");
   next();
 });
+app.use(enableCORS);
+
 // __dirname = path.resolve();
 // if (process.env.NODE_ENV == "production") {
 //   app.use(express.static(path.join(__dirname, "frontend/build")));
