@@ -3,7 +3,7 @@ const cookieParser = require("cookie-parser");
 const app = express();
 const cors = require("cors");
 
-app.use(cors({ credentials: true, origin: ["http://localhost:3000", "https://easyhr870.herokuapp.com","http://3.90.218.215"] }));
+app.use(cors({ credentials: true, origin: ["http://localhost:3000", "http://54.145.254.42"] }));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
