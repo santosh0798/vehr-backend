@@ -35,14 +35,14 @@ app.use(function (req, res, next) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
   next();
 });
-__dirname = path.resolve();
-if (process.env.NODE_ENV == "production") {
-  app.use(express.static(path.join(__dirname, "frontend/build")));
+// __dirname = path.resolve();
+// if (process.env.NODE_ENV == "production") {
+//   app.use(express.static(path.join(__dirname, "frontend/build")));
 
-  // ...
-  // Right before your app.listen(), add this:
-  app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "frontend", "build", "index.html"));
-  });
-}
+//   // ...
+//   // Right before your app.listen(), add this:
+//   app.get("*", (req, res) => {
+//     res.sendFile(path.resolve(__dirname, "frontend", "build", "index.html"));
+//   });
+// }
 module.exports = app;
