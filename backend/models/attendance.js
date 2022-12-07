@@ -65,6 +65,16 @@ const attendanceSchema = new mongoose.Schema({
         type: Number,
         default: 0,
       },
+      isOvertime: {
+        type: Boolean,
+        default: false
+      },
+      checkIn: {
+        type: Date,
+      },
+      checkOut: {
+        type: Date,
+      },
     },
   ],
   overTime: {
@@ -102,6 +112,23 @@ const attendanceSchema = new mongoose.Schema({
     required: true,
     ref: "User",
   },
+  allowancesNReject: [{
+    category: {
+      type: String
+    },
+    value: {
+      type: Number
+    },
+    type: {
+      type: String,
+      enum: {
+        values: [
+          "allowence",
+          "recovery"
+        ],
+      }
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now,

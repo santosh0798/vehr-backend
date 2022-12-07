@@ -3,12 +3,12 @@ const cookieParser = require("cookie-parser");
 const app = express();
 const cors = require("cors");
 
-app.use(cors({ credentials: true, origin: "http://localhost:3000" }));
+app.use(cors({ credentials: true, origin: ["http://localhost:3000", "https://easyhr870.herokuapp.com","http://3.90.218.215"] }));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
 app.use(cookieParser());
+
 //Import all routes
 const auth = require("./routes/auth");
 const attendance = require("./routes/employeeAttendance");

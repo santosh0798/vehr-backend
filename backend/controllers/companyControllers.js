@@ -11,6 +11,8 @@ exports.updateCompany = catchAsyncErrors(async (req, res, next) => {
     minimumWages,
     bonasFrom,
     designation,
+    companyInTime,
+    companyOutTime
   } = req.body;
 
   console.log(
@@ -28,6 +30,8 @@ exports.updateCompany = catchAsyncErrors(async (req, res, next) => {
       companyName,
       companyAddress,
       bonusPercentage,
+      companyInTime,
+    companyOutTime,
       $push: {
         wages: {
           minimumWages,
@@ -52,6 +56,27 @@ exports.myCompany = catchAsyncErrors(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
+    user,
+  });
+});
+
+
+
+// updat allowance   =>   /api/v1/company/
+
+exports.updateAllowance = catchAsyncErrors(async (req, res, next) => {
+  const user = await Company.updateOne(
+    { user: req.user.id },
+    {
+      $set: {
+        recoveryAndAllowance: req.body.data
+      }
+    }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Company Updates Successfully",
     user,
   });
 });

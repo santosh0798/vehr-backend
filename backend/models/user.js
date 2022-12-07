@@ -32,7 +32,6 @@ const userSchema = new mongoose.Schema({
         minlength: [6, 'Password must be longer than 6 Character'],
         select: false //For hiding the text in input field
     },
-
     companyName: {
         type: String,
         required: [true, 'Please Enter Company Name'],

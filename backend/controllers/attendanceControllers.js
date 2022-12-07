@@ -8,6 +8,10 @@ const csv = require("fast-csv");
 
 // Create New EmployeeAttendance or updateAttendance => api/v1/employee/attendance
 
+function daysInMonth(month, year) {
+  return new Date(year, month, 0).getDate();
+}
+
 exports.newEmployeesAttendance = catchAsyncErrors(async (req, res, next) => {
   const {
     UAN,
@@ -42,6 +46,8 @@ exports.newEmployeesAttendance = catchAsyncErrors(async (req, res, next) => {
     attendanceYear: attendanceYear,
     user: req.user.id,
   });
+
+
   //previous year employee
 
   let prevYearEmployeeExist = await EmployeeAttendance.findOne({
@@ -247,7 +253,7 @@ exports.newEmployeesAttendance = catchAsyncErrors(async (req, res, next) => {
     }
 
     const employeeAttendances = await EmployeeAttendance.create({
-      UAN: UAN,
+      UAN: UAN?.toString()?.substr(0,8),
       fullName: fullName,
       mobileNo: mobileNo,
       joiningDate: joiningDate,
@@ -334,6 +340,57 @@ exports.EmployeeOvertime = catchAsyncErrors(async (req, res, next) => {
     });
   }
 });
+
+
+// Create New isovertime => api/v1/employee/attendance/updateovertimestat
+
+exports.EmployeeOvertimeStatus = catchAsyncErrors(async (req, res, next) => {
+  const { isOvertime, attendanceMonth, attendanceYear, date } = req.body;
+
+  let employeeExist = await EmployeeAttendance.findOne({
+    employee: req.body.employee,
+    attendanceMonth: attendanceMonth,
+    attendanceYear: attendanceYear,
+    user: req.user.id,
+  });
+
+  if (employeeExist) {
+    let index = -1;
+    for (let m = 0; m < employeeExist.employeeAttendance.length; m++) {
+      if (employeeExist.employeeAttendance[m].date == date) {
+        index = m;
+        break;
+      }
+    }
+    if (index != -1) {
+      employeeExist.employeeAttendance[index].isOvertime = isOvertime;
+      if (isOvertime == false) {
+        employeeExist.employeeAttendance[index].overtime = 0;
+      }
+      else {
+        if ((new Date(employeeExist.employeeAttendance[index].checkOut).getHours() - new Date(employeeExist.employeeAttendance[index].checkIn).getHours()) > 8) {
+          employeeExist.employeeAttendance[index].overtime = Math.round((new Date(employeeExist.employeeAttendance[index].checkOut).getHours() - new Date(employeeExist.employeeAttendance[index].checkIn).getHours()) - 8);
+
+        }
+
+      }
+    }
+
+    employeeExist = await employeeExist.save();
+    return res.status(200).json({
+      success: true,
+      message: "Employee Overtime Status Added Successfully",
+      employeeExist,
+    });
+  } else {
+    return res.status(200).json({
+      success: true,
+      message: "Employee Does not exist",
+      employeeExist,
+    });
+  }
+});
+
 
 // Get logged in user Employee attendance  =>   /api/v1/employees/attendance/mylist
 
@@ -953,7 +1010,7 @@ exports.attendancecsv = catchAsyncErrors(async (req, res, next) => {
               }
             }
             const employeeAttendances = await EmployeeAttendance.create({
-              UAN: row.aadhaar,
+              UAN: row.aadhaar?.toString()?.substr(0,8),
               fullName: employees.personalDetails.fullName,
               mobileNo: employees.personalDetails.mobileNo,
               joiningDate: employees.companyDetails.joiningDate,
@@ -1063,6 +1120,10 @@ exports.attendancecsvBulk = catchAsyncErrors(async (req, res, next) => {
       })
 
       .on("data", async (row) => {
+
+        const totalDaysOfMonth = parseInt(daysInMonth(parseInt(row.month), parseInt(row.year)), 10);
+
+
         //employee
         let employees = await Employee.findOne({
           "companyDetails.aadhaarNo": row.aadhaar,
@@ -1094,6 +1155,14 @@ exports.attendancecsvBulk = catchAsyncErrors(async (req, res, next) => {
 
           let overtimehrs = parseInt(row["OT Hours"]);
 
+
+
+          if (row["Present days"] > totalDaysOfMonth) {
+            overtimehrs = (row["Present days"] - totalDaysOfMonth) * 4;
+
+          }
+
+
           if (employeeExist) {
             //if employee takes leave after paid holiday but date is one
             for (let m = 0; m < employeeExist.employeeAttendance.length; m++) {
@@ -1102,23 +1171,23 @@ exports.attendancecsvBulk = catchAsyncErrors(async (req, res, next) => {
               if (employeeExist.employeeAttendance[m].date == m + 1) {
                 employeeExist.employeeAttendance[m].attendance = true;
                 employeeExist.employeeAttendance[m].leave = "";
-                if (overtimehrs >= 6) {
-                  employeeExist.employeeAttendance[m].overtime = 6;
-                } else if (overtimehrs < 6 && overtimehrs > 0) {
+                if (overtimehrs >= 4) {
+                  employeeExist.employeeAttendance[m].overtime = 4;
+                } else if (overtimehrs < 4 && overtimehrs > 0) {
                   employeeExist.employeeAttendance[m].overtime = overtimehrs;
                 }
-                overtimehrs -= 6;
+                overtimehrs -= 4;
               } else {
                 tempArry.attendance = true;
                 tempArry.leave = "";
                 tempArry.date = m + 1;
-                if (overtimehrs >= 6) {
-                  tempArry.overtime = 6;
-                } else if (overtimehrs < 6 && overtimehrs > 0) {
+                if (overtimehrs >= 4) {
+                  tempArry.overtime = 4;
+                } else if (overtimehrs < 4 && overtimehrs > 0) {
                   tempArry.overtime = overtimehrs;
                 }
                 employeeExist.employeeAttendance.push(tempArry);
-                overtimehrs -= 6;
+                overtimehrs -= 4;
               }
             }
 
@@ -1135,23 +1204,31 @@ exports.attendancecsvBulk = catchAsyncErrors(async (req, res, next) => {
             let arr = [];
             let overtimehrs = parseInt(row["OT Hours"]);
 
-            for (let m = 0; m < row["Present days"]; m++) {
+
+            if (row["Present days"] > totalDaysOfMonth) {
+              overtimehrs = (row["Present days"] - totalDaysOfMonth) * 4;
+
+            }
+
+            let presentDates = row["Present days"] > totalDaysOfMonth ? totalDaysOfMonth : row["Present days"];
+
+            for (let m = 0; m < presentDates; m++) {
               arr.push({
                 date: m + 1,
                 attendance: true,
                 leave: "",
                 overtime:
-                  overtimehrs >= 6
-                    ? 6
-                    : overtimehrs < 6 && overtimehrs > 0
+                  overtimehrs >= 4
+                    ? 4
+                    : overtimehrs < 4 && overtimehrs > 0
                       ? overtimehrs
                       : 0,
               });
-              overtimehrs -= 6;
+              overtimehrs -= 4;
             }
 
             let employeeAttendances = await EmployeeAttendance.create({
-              UAN: row.aadhaar,
+              UAN: row.aadhaar?.toString()?.substr(0,8),
               fullName: employees.personalDetails.fullName,
               mobileNo: employees.personalDetails.mobileNo,
               joiningDate: employees.companyDetails.joiningDate,
@@ -1252,3 +1329,259 @@ exports.myEmployeesBonus = catchAsyncErrors(async (req, res, next) => {
     length: length,
   });
 });
+
+
+
+
+exports.updateEmployeeAllowances = catchAsyncErrors(async (req, res, next) => {
+  const { data, employee, attendanceYear, attendanceMonth } = req.body;
+
+
+
+  let employeeExist = await EmployeeAttendance.findOne({
+    employee: employee,
+    attendanceYear: attendanceYear,
+    attendanceMonth: attendanceMonth
+  });
+
+  console.log(employeeExist)
+
+  if (!employeeExist) {
+    return res.status(400).json({
+      success: false,
+      message: "Employee Attendance Not Found",
+    });
+  }
+
+  employeeExist.allowancesNReject = data;
+  employeeExist = await employeeExist.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Update Allowances and Recovery Details Successfully",
+    employeeExist,
+  });
+});
+
+
+// cams unit api for biometric
+exports.getCamsunit = catchAsyncErrors(async (req, res, next) => {
+
+
+  const { RealTime } = req.body;
+  console.log(RealTime)
+
+
+  const currDate = new Date(RealTime?.PunchLog?.LogTime);
+
+  let employeeExist = await EmployeeAttendance.findOne({
+    UAN: RealTime?.PunchLog?.UserId,
+    attendanceMonth: (currDate.getMonth() + 1),
+    attendanceYear: currDate.getFullYear(),
+  });
+
+  if (RealTime?.PunchLog?.Type == "CheckOut") {
+    if (employeeExist) {
+      let index = -1;
+      for (let m = 0; m < employeeExist.employeeAttendance.length; m++) {
+        if (employeeExist.employeeAttendance[m].date == currDate.getDate()) {
+          index = m;
+          break;
+        }
+      }
+
+
+      if (index != -1) {
+        employeeExist.employeeAttendance[index].checkOut = currDate;
+      }
+
+      employeeExist = await employeeExist.save();
+    }
+  }
+  else {
+
+    if (employeeExist) {
+      let index = -1;
+      for (let m = 0; m < employeeExist.employeeAttendance.length; m++) {
+        if (employeeExist.employeeAttendance[m].date == currDate.getDate()) {
+          index = m;
+          break;
+        }
+      }
+
+      if (index != -1) {
+        employeeExist.totalPresent += 1;
+      }
+
+      if (index != -1) {
+        employeeExist.employeeAttendance[index].attendance = true;
+        employeeExist.employeeAttendance[index].checkIn = currDate;
+      }
+
+      if (index == -1) {
+        employeeExist.employeeAttendance.push({
+          date: currDate.getDate(),
+          attendance: true,
+          checkIn: currDate
+        });
+      }
+
+      employeeExist = await employeeExist.save();
+
+    }
+
+  }
+  return res.status(200).json({
+    success: true,
+  });
+
+});
+
+
+//api for next day
+
+
+exports.nextDayAttendance = async () => {
+
+  const employeesArr = await Employee.find({});
+
+
+  employeesArr.forEach(async (item, index) => {
+    //current month employee
+    let employeeExist = await EmployeeAttendance.findOne({
+      employee: item?._id,
+      attendanceMonth: (new Date().getMonth() + 1),
+      attendanceYear: new Date().getFullYear(),
+    });
+
+
+
+    //previous month employee
+
+    let prevMonthEmployeeExist = await EmployeeAttendance.findOne({
+      employee: item?._id,
+      attendanceMonth: (new Date().getMonth()),
+      attendanceYear: new Date().getFullYear(),
+    });
+    //previous year employee
+
+    let prevYearEmployeeExist = await EmployeeAttendance.findOne({
+      employee: item?._id,
+      attendanceMonth: 12,
+      attendanceYear: new Date().getFullYear() - 1,
+    });
+
+    if (employeeExist) {
+      let index = -1;
+      let prevdate = -1;
+      for (let m = 0; m < employeeExist.employeeAttendance.length; m++) {
+        if (employeeExist.employeeAttendance[m].date == new Date().getDate()) {
+          index = m;
+          break;
+        }
+      }
+
+
+      //change attandance
+
+      if (index != -1) {
+        employeeExist.employeeAttendance[index].attendance = false;
+      }
+
+      if (index == -1) {
+        employeeExist.employeeAttendance.push({
+          date: new Date().getDate(),
+          attendance: false,
+          leave: ""
+        });
+      }
+
+      employeeExist = await employeeExist.save();
+
+      if (prevMonthEmployeeExist) {
+        prevMonthEmployeeExist = await prevMonthEmployeeExist.save();
+      }
+
+    } else {
+      let totalleave = 0;
+      let totalpresent = 0;
+      let carryForward = 0;
+      let availLeave = 0;
+
+      let joinDate = new Date(item?.companyDetails?.joiningDate);
+      let lastDate = new Date(`12/31/${joinDate.getFullYear()}`);
+      var Difference_In_Time = lastDate.getTime() - joinDate.getTime();
+      var Difference_In_Days = Difference_In_Time / (1000 * 3600 * 24);
+      console.log(Difference_In_Days);
+
+      if ((new Date().getMonth() + 1) == 1 && prevYearEmployeeExist) {
+        if (joinDate.getFullYear() == new Date().getFullYear() - 1) {
+          if (
+            joinDate.getFullYear() / 4 == 0 &&
+            Difference_In_Days < 366 &&
+            prevYearEmployeeExist.totalPresent > (Difference_In_Days * 2) / 3
+          ) {
+            totalleave =
+              parseInt(prevYearEmployeeExist.totalPresent / 20) +
+              prevYearEmployeeExist.carryForward;
+            carryForward = totalleave;
+          } else if (
+            joinDate.getFullYear() / 4 != 0 &&
+            Difference_In_Days < 365 &&
+            prevYearEmployeeExist.totalPresent > (Difference_In_Days * 2) / 3
+          ) {
+            totalleave =
+              parseInt(prevYearEmployeeExist.totalPresent / 20) +
+              prevYearEmployeeExist.carryForward;
+            carryForward = totalleave;
+          }
+        } else {
+          totalleave =
+            parseInt(prevYearEmployeeExist.totalPresent / 20) +
+            prevYearEmployeeExist.carryForward;
+          carryForward = totalleave;
+        }
+      } else if ((new Date().getMonth() + 1) != 1 && prevMonthEmployeeExist) {
+        totalleave = prevMonthEmployeeExist.totalLeave;
+
+        totalpresent = prevMonthEmployeeExist.totalPresent;
+        carryForward = prevMonthEmployeeExist.carryForward;
+        availLeave = prevMonthEmployeeExist.availLeave;
+      }
+
+      console.log(item?.companyDetails?.aadhaarNo?.toString()?.length)
+
+      const employeeAttendances = await EmployeeAttendance.create({
+        UAN: item?.companyDetails?.aadhaarNo?.toString()?.substr(0, 8),
+        fullName: item?.personalDetails?.fullName,
+        mobileNo: item?.personalDetails?.mobileNo,
+        joiningDate: item?.companyDetails?.joiningDate,
+        dailyWages: item?.salaryDetails?.basicSalary,
+        employee: item?._id,
+        employeeAttendance: [{
+          date: new Date().getDate(),
+          attendance: false,
+          leave: ""
+        }],
+        attendanceMonth: new Date().getMonth() + 1,
+        attendanceYear: new Date().getFullYear(),
+        createdAt: Date.now(),
+        totalPresent: totalpresent,
+        totalLeave: totalleave,
+        availLeave: availLeave,
+        carryForward: carryForward,
+        user: item?.user,
+      });
+
+      //if employee takes leave after paid holiday but date is one
+
+
+      if (prevMonthEmployeeExist) {
+        prevMonthEmployeeExist = await prevMonthEmployeeExist.save();
+      }
+
+    }
+  })
+
+}
+

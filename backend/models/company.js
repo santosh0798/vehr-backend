@@ -11,6 +11,14 @@ const companySchema = new mongoose.Schema({
   bonusPercentage: {
     type: String,
   },
+  companyInTime: {
+    type: Date,
+
+  },
+  companyOutTime: {
+    type: Date,
+
+  },
   wages: [
     {
       minimumWages: {
@@ -34,6 +42,10 @@ const companySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: "User",
+  },
+  recoveryAndAllowance: {
+    type: Array,
+    default: []
   },
   createdAt: {
     type: Date,

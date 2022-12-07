@@ -14,6 +14,9 @@ const {
   attendancecsvBulk,
   myEmployeesLeaves,
   myEmployeesBonus,
+  updateEmployeeAllowances,
+  getCamsunit,
+  EmployeeOvertimeStatus,
 } = require("../controllers/attendanceControllers");
 
 router
@@ -28,6 +31,12 @@ router
 router
   .route("/employee/attendance/updateovertime")
   .post(isAuthenticatedUser, EmployeeOvertime);
+
+  router
+  .route("/employee/attendance/updateovertimestatus")
+  .post(isAuthenticatedUser, EmployeeOvertimeStatus);
+
+
 router
   .route("/employee/attendance/mylist/:month/:year/:employee")
   .get(isAuthenticatedUser, myEmployeeAttendance);
@@ -51,5 +60,14 @@ router
 router
   .route("/employee/bonus/mylist/:year")
   .get(isAuthenticatedUser, myEmployeesBonus);
+
+router
+  .route("/employee/allowances")
+  .post(isAuthenticatedUser, updateEmployeeAllowances);
+
+
+router
+  .route("/camsunit")
+  .post(getCamsunit);
 
 module.exports = router;
